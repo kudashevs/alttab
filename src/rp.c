@@ -46,7 +46,7 @@ static int rp_add_windows_in_group(int current_group, int window_group)
 {
     char *args[] = { "ratpoison", "-c", "windows %n %i %s %t", NULL };
     char buf[MAXRPOUT];
-    char *rpse = "bad token while parsing ratpoison output: ";
+    char *rpse = "bad token while parsing ratpoison output: %s\n";
 
     bzero(buf, MAXRPOUT);
     if (!execAndReadStdout(ratpoison_cmd, args, buf, MAXRPOUT)) {
@@ -66,18 +66,28 @@ static int rp_add_windows_in_group(int current_group, int window_group)
             char *rest2 = tok;
             char *tok2;
             char *endptr;
-            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2)))
-                die(rpse, rest2);
+            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2))) {
+                msg(-1, rpse, rest2);
+                continue;
+            }
             int wm_id = strtol(tok2, &endptr, 10);
-            if (endptr == tok2)
-                die(rpse, tok2);
-            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2)))
-                die(rpse, rest2);
+            if (endptr == tok2) {
+                msg(-1, rpse, rest2);
+                continue;
+            }
+            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2))) {
+                msg(-1, rpse, rest2);
+                continue;
+            }
             int win = strtol(tok2, &endptr, 10);
-            if (endptr == tok2)
-                die(rpse, tok2);
-            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2)))
-                die(rpse, rest2);
+            if (endptr == tok2) {
+                msg(-1, rpse, rest2);
+                continue;
+            }
+            if (!((tok2 = strsep(&rest2, " \t")) && (*tok2))) {
+                msg(-1, rpse, rest2);
+                continue;
+            }
             switch (*tok2) {
             case '*':
                 // pull to head
