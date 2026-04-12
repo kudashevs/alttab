@@ -140,6 +140,56 @@ static void print_winlist(void)
     }
 }
 
+//
+//  Find a desktop name for a specific destkop
+//
+size_t get_desktop_name(Window win, unsigned long desktop, char* name) {
+    Atom dnames = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
+    Atom utf8 = XInternAtom(dpy, "UTF8_STRING", False);
+    if (dnames == None || utf8 == None)
+        return 0;
+
+    Atom type;
+    int format;
+    unsigned long n, leftover;
+    unsigned char *data = NULL;
+
+    if (XGetWindowProperty(dpy, root, dnames,
+                           0, (~0l), False,
+                           utf8,
+                           &type, &format,
+                           &n, &leftover, &data) == Success && data != NULL) {
+        if (type != utf8 || format != 8 || n == 0) {
+            XFree(data);
+
+            return 0;
+        }
+
+        char *ptr = (char *)data;
+        unsigned long offset = 0;
+        int i = 0;
+
+        while (offset < n) {
+            size_t len = strlen(ptr);
+            if (i == desktop) {
+                strncpy(name, ptr, MAXNAMESZ - 1);
+                name[MAXNAMESZ - 1] = '\0';
+
+                XFree(data);
+                return len;
+            }
+
+            ptr += len + 1;
+            offset += len + 1;
+            i++;
+        }
+
+        XFree(data);
+    }
+    // it wasn't able to retrieve information
+    return 0;
+}
+
 // PUBLIC
 
 //
@@ -555,14 +605,19 @@ endIcon:
 
     WI.bottom_line[0] = '\0';
     long unsigned int nws, *pid;
-    char procd[32];
+    char dname[MAXNAMESZ] = "?";
+    char procd[32] = "?";
     int sr;
     struct stat st;
     struct passwd *gu;
     switch(g.option_bottom_line) {
         case BL_DESKTOP:
             if (desktop != DESKTOP_UNKNOWN)
-                snprintf(WI.bottom_line, MAXNAMESZ, "%ld", desktop);
+                if (get_desktop_name(win,desktop, dname)) {
+                    snprintf(WI.bottom_line, MAXNAMESZ, "%s", dname);
+                } else {
+                    snprintf(WI.bottom_line, MAXNAMESZ, "%ld", desktop);
+                }
             else
                 strncpy(WI.bottom_line, "?", 2);
             break;
